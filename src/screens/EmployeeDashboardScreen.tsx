@@ -13,11 +13,7 @@ import { InfoCard } from "../components/InfoCard";
 import { WeeklyAttendance } from "../components/WeeklyAttendance";
 import { CustomButton } from "../components/CustomButton";
 import { AttendanceButton } from "../components/AttendanceButton";
-import { EventCard } from "../components/EventCard";
-import { useEvents } from "../hooks/useEvents";
-
 import { requestSickLeave, getUsedSickLeavesThisMonth } from "../services/leaveService";
-import { AppEvent } from "../services/eventService";
 import { getTodayDateString, getCurrentMonthString } from "../utils/dateHelpers";
 import { colors, spacing, radius, shadows } from "../theme/colors";
 
@@ -35,8 +31,6 @@ export const EmployeeDashboardScreen = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   
   const heroFadeAnim = useRef(new Animated.Value(0)).current;
-
-  const { events, loading: eventsLoading } = useEvents(user?.uid);
 
   useEffect(() => {
     if (!authLoading) {
@@ -130,36 +124,6 @@ export const EmployeeDashboardScreen = () => {
 
         <WeeklyAttendance week={weeklyData} delay={600} />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Events</Text>
-          {eventsLoading ? (
-            <Text style={styles.emptyText}>Loading events...</Text>
-          ) : events.length === 0 ? (
-            <Text style={styles.emptyText}>No assigned events 🎉</Text>
-          ) : (
-            events.map((ev, i) => {
-              const evDate = new Date(ev.date);
-              const today = new Date();
-              let presetStatus: "upcoming" | "ongoing" | "completed" = "upcoming";
-              
-              if (evDate.toDateString() === today.toDateString()) presetStatus = "ongoing";
-              else if (evDate < today) presetStatus = "completed";
-
-              return (
-                <EventCard
-                  key={ev.id || i}
-                  eventName={ev.title}
-                  date={ev.date || "TBD"}
-                  time={ev.time || "TBD"}
-                  location={ev.location || "TBD"}
-                  status={presetStatus}
-                  delay={700 + (i * 100)}
-                />
-              );
-            })
-          )}
-        </View>
-
         <View style={styles.card}>
           <Text style={styles.label}>Sick Leave ({usedLeaves}/2)</Text>
           
@@ -228,9 +192,6 @@ const styles = StyleSheet.create({
   statusLabel: { color: colors.text.label, fontSize: 11, marginBottom: spacing.small, textTransform: "uppercase", letterSpacing: 0.5 },
   timeValue: { color: colors.text.primary, fontSize: 18, fontWeight: "bold" },
   statusValue: { color: colors.primary, fontSize: 14, fontWeight: "bold" },
-  section: { marginTop: spacing.xlarge },
-  sectionTitle: { color: colors.text.primary, fontSize: 18, fontWeight: "bold", marginBottom: spacing.medium },
-  emptyText: { color: colors.text.secondary, fontStyle: "italic", marginLeft: spacing.small },
   label: { color: colors.text.secondary, marginBottom: spacing.small },
   dateBtn: { backgroundColor: colors.secondaryBackground, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.small },
   input: { 
