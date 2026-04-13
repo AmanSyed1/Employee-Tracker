@@ -59,20 +59,35 @@ export const getYesterdayAttendance = async (uid: string) => {
 export const getMonthlyAttendance = async (uid: string) => {
   const snap = await getDocs(collection(db, "attendance", uid, "records"));
   const now = new Date();
-  let workedDays = 0;
+  let present = 0;
+  let halfDay = 0;
+  let absent = 0;
   let totalWorkingDays = 0;
 
   snap.docs.forEach((d) => {
+    const data = d.data();
     const [y, m, da] = d.id.split("-").map(Number);
     const date = new Date(y, m - 1, da);
 
-    if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear() && date.getDay() !== 0) {
-      totalWorkingDays++;
-      if (d.data().checkIn || d.data().checkOut) workedDays++;
+    // Filter for current month and exclude Sundays (if we still want totalWorkingDays to show potential)
+    // Actually, the user says "Only count records explicitly marked as absent" for the absent box.
+    if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+      if (date.getDay() !== 0) totalWorkingDays++;
+      
+      if (data.status === "Absent") {
+        absent++;
+      } else if (data.checkIn && data.checkOut) {
+        const isFullDay = !isLate(data.checkIn.toDate()) && !isEarly(data.checkOut.toDate());
+        if (isFullDay) present++;
+        else halfDay++;
+      } else if (data.checkIn || data.checkOut) {
+        // If only checkIn or only checkOut exists, count as Half Day
+        halfDay++;
+      }
     }
   });
 
-  return { workedDays, totalWorkingDays };
+  return { present, halfDay, absent, totalWorkingDays };
 };
 
 export const getWeeklyAttendance = async (uid: string) => {

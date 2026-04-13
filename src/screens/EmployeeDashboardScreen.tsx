@@ -9,11 +9,10 @@ import { useUser } from "../hooks/useUser";
 import { useAttendance } from "../hooks/useAttendance";
 
 import { Header } from "../components/Header";
-import { InfoCard } from "../components/InfoCard";
 import { WeeklyAttendance } from "../components/WeeklyAttendance";
 import { CustomButton } from "../components/CustomButton";
 import { AttendanceButton } from "../components/AttendanceButton";
-import { requestSickLeave, getUsedSickLeavesThisMonth } from "../services/leaveService";
+import { SummaryBox } from "../components/SummaryBox";
 import { getTodayDateString, getCurrentMonthString } from "../utils/dateHelpers";
 import { colors, spacing, radius, shadows } from "../theme/colors";
 
@@ -21,15 +20,10 @@ export const EmployeeDashboardScreen = () => {
   const { user, role, loading: authLoading, logout } = useAuth();
   const { profile, loadUser } = useUser(user?.uid);
   const { 
-    checkInTime, checkOutTime, yesterdayStatus, monthlyWorked, monthlyTotal, weeklyData,
+    checkInTime, checkOutTime, yesterdayStatus, monthlyStats, weeklyData,
     loadAttendance, handleCheckIn, handleCheckOut, loading: attLoading
   } = useAttendance(user?.uid);
 
-  const [leaveDate, setLeaveDate] = useState("");
-  const [reason, setReason] = useState("");
-  const [usedLeaves, setUsedLeaves] = useState(0);
-  const [showCalendar, setShowCalendar] = useState(false);
-  
   const heroFadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -41,7 +35,7 @@ export const EmployeeDashboardScreen = () => {
       } else if (user && role === "employee") {
          loadUser();
          loadAttendance();
-         getUsedSickLeavesThisMonth(user.uid).then(setUsedLeaves);
+         loadAttendance();
          
          Animated.timing(heroFadeAnim, {
             toValue: 1,
@@ -77,7 +71,7 @@ export const EmployeeDashboardScreen = () => {
           onLogout={() => confirmAction("Logout now?", async () => { await logout(); router.replace("/login"); })} 
         />
 
-        <Animated.View style={[styles.card, { marginTop: spacing.large, opacity: heroFadeAnim, transform: [{ translateY: heroFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+        <Animated.View style={[styles.card, { marginTop: spacing.medium, opacity: heroFadeAnim, transform: [{ translateY: heroFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
           <View style={styles.cardHeader}>
              <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
              <Text style={styles.cardHeaderText}>Today's Status</Text>
@@ -117,55 +111,29 @@ export const EmployeeDashboardScreen = () => {
           />
         </Animated.View>
 
-        <View style={styles.rowCards}>
-          <InfoCard label="Yesterday" value={yesterdayStatus} icon="time-outline" delay={200} />
-          <InfoCard label={`Attendance : ${getCurrentMonthString()}`} value={`${monthlyWorked}/${monthlyTotal}`} icon="calendar-outline" delay={400} />
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+             <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
+             <Text style={styles.cardHeaderText}>Yesterday's Status</Text>
+          </View>
+          <Text style={styles.yesterdayStatusText}>{yesterdayStatus}</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+             <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
+             <Text style={styles.cardHeaderText}>Attendance: {getCurrentMonthString()}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+             <SummaryBox value={monthlyStats.present} label="Present" bgColor="#064e3b" numColor="#22c55e" />
+             <SummaryBox value={monthlyStats.halfDay} label="Half Day" bgColor="#451a03" numColor="#eab308" />
+             <SummaryBox value={monthlyStats.absent} label="Absent" bgColor="#450a0a" numColor="#ef4444" />
+             <SummaryBox value={monthlyStats.leaves} label="Leave" bgColor="#1f2937" numColor="#f3f4f6" />
+          </View>
         </View>
 
         <WeeklyAttendance week={weeklyData} delay={600} />
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Sick Leave ({usedLeaves}/2)</Text>
-          
-          <CustomButton 
-            title={leaveDate || "Select Sick Leave Date"} 
-            onPress={() => setShowCalendar(true)} 
-            style={styles.dateBtn} 
-            textStyle={{ color: leaveDate ? colors.text.primary : colors.text.placeholder }}
-          />
-
-          {showCalendar && (
-            <DateTimePicker
-              value={new Date()} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"}
-              minimumDate={new Date()}
-              onChange={(_, date) => {
-                setShowCalendar(false);
-                if (date) setLeaveDate(date.toISOString().split("T")[0]);
-              }}
-            />
-          )}
-
-          <TextInput
-            placeholder="Reason" 
-            placeholderTextColor={colors.text.placeholder}
-            style={styles.input} 
-            value={reason} 
-            onChangeText={setReason}
-          />
-
-          <CustomButton 
-            title="Request Sick Leave" 
-            disabled={usedLeaves >= 2} 
-            onPress={async () => {
-              if (!leaveDate || !reason.trim()) return Alert.alert("Please select date and enter reason");
-              if (!user) return;
-              await requestSickLeave(user.uid, leaveDate, reason);
-              Alert.alert("Request sent to admin");
-              setLeaveDate(""); setReason("");
-              setUsedLeaves(await getUsedSickLeavesThisMonth(user.uid));
-            }}
-          />
-        </View>
       </ScrollView>
     </View>
   );
@@ -174,9 +142,8 @@ export const EmployeeDashboardScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scrollContent: { padding: spacing.large, paddingBottom: 60 },
-  rowCards: { flexDirection: "row", gap: spacing.medium, marginTop: spacing.large },
   card: { 
-    marginTop: spacing.large, 
+    marginTop: spacing.medium, 
     backgroundColor: colors.cardBackground, 
     padding: spacing.large, 
     borderRadius: radius.large,
@@ -192,15 +159,6 @@ const styles = StyleSheet.create({
   statusLabel: { color: colors.text.label, fontSize: 11, marginBottom: spacing.small, textTransform: "uppercase", letterSpacing: 0.5 },
   timeValue: { color: colors.text.primary, fontSize: 18, fontWeight: "bold" },
   statusValue: { color: colors.primary, fontSize: 14, fontWeight: "bold" },
-  label: { color: colors.text.secondary, marginBottom: spacing.small },
-  dateBtn: { backgroundColor: colors.secondaryBackground, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.small },
-  input: { 
-    backgroundColor: colors.secondaryBackground,
-    borderWidth: 1, 
-    borderColor: colors.border, 
-    borderRadius: radius.medium, 
-    padding: 14, 
-    color: colors.text.primary, 
-    marginBottom: spacing.small 
-  }
+  yesterdayStatusText: { color: colors.text.primary, fontSize: 20, fontWeight: "bold" },
+  summaryRow: { flexDirection: "row", gap: spacing.small, justifyContent: "space-between" },
 });
