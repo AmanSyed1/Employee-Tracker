@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useState, useRef } from "react";
-import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { CustomButton } from "../components/CustomButton";
 import { useAuth } from "../hooks/useAuth";
 import { colors, radius, spacing } from "../theme/colors";
@@ -14,7 +15,8 @@ export const LoginScreen = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const focusedInput = useRef<string | null>(null);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
 
@@ -38,10 +40,10 @@ export const LoginScreen = () => {
       } else if (role === "employee") {
         router.replace("/(employee)");
       } else {
-        setError("Invalid user role");
+        setError("Invalid credentials. Please try again.");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred");
+      setError("Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -56,12 +58,15 @@ export const LoginScreen = () => {
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        style={[styles.keyboardView, { zIndex: 1 }]}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.centeredContainer}>
-            <View style={styles.loginCard}>
+            <Animated.View
+              entering={FadeInUp.duration(500).delay(200)}
+              style={styles.loginCard}
+            >
               {/* Branding Section */}
               <View style={styles.header}>
                 <Text style={styles.brandText}>ACE ENTERTAINMENTS</Text>
@@ -71,43 +76,47 @@ export const LoginScreen = () => {
 
               {/* Email Field */}
               <View style={styles.field}>
-                <Text style={styles.label}>Email</Text>
-                <View style={styles.inputContainer}>
+                <View style={[
+                  styles.inputContainer,
+                  emailFocused && styles.inputFocused
+                ]}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your email"
+                    placeholder="Email"
                     placeholderTextColor={colors.text.placeholder}
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
-                    onFocus={() => (focusedInput.current = "email")}
-                    onBlur={() => (focusedInput.current = null)}
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => setEmailFocused(false)}
                   />
                 </View>
               </View>
 
               {/* Password Field */}
               <View style={styles.field}>
-                <Text style={styles.label}>Password</Text>
-                <View style={styles.inputContainer}>
+                <View style={[
+                  styles.inputContainer,
+                  passwordFocused && styles.inputFocused
+                ]}>
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
-                    placeholder="Enter your password"
+                    placeholder="Password"
                     placeholderTextColor={colors.text.placeholder}
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
-                    onFocus={() => (focusedInput.current = "password")}
-                    onBlur={() => (focusedInput.current = null)}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                   />
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeIcon}
                   >
-                    <Ionicons 
-                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                      size={20} 
-                      color={colors.text.secondary} 
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={colors.text.secondary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -121,7 +130,7 @@ export const LoginScreen = () => {
                 loading={loading}
                 style={styles.loginButton}
               />
-            </View>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -187,15 +196,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
-  field: { 
-    marginBottom: spacing.medium 
-  },
-  label: { 
-    color: colors.text.label, 
-    fontSize: 12, 
-    fontWeight: "500",
-    marginBottom: spacing.xsmall,
-    marginLeft: 4,
+  field: {
+    marginBottom: spacing.medium
   },
   inputContainer: {
     flexDirection: "row",
@@ -204,21 +206,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.medium,
+    height: 52,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: "rgba(29, 185, 84, 0.05)",
   },
   input: {
     color: colors.text.primary,
-    padding: 14,
+    paddingHorizontal: 14,
     fontSize: 15,
     flex: 1,
+    height: "100%",
   },
   eyeIcon: {
     paddingHorizontal: 12,
   },
-  errorText: { 
-    color: colors.status.error, 
-    fontSize: 13, 
+  errorText: {
+    color: colors.status.error,
+    fontSize: 13,
     textAlign: "center",
-    marginBottom: spacing.medium 
+    marginBottom: spacing.medium
   },
   loginButton: {
     marginTop: spacing.small,
