@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { CustomButton } from "../components/CustomButton";
 import { useAuth } from "../hooks/useAuth";
@@ -19,6 +19,15 @@ export const LoginScreen = () => {
   const [passwordFocused, setPasswordFocused] = useState(false);
 
   const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
+
+  const [showFinalFrame, setShowFinalFrame] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowFinalFrame(true);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLogin = async () => {
     setError("");
@@ -63,6 +72,19 @@ export const LoginScreen = () => {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.centeredContainer}>
+            {/* 🔥 Animation */}
+            <View style={styles.animationContainer} pointerEvents="none">
+              <Image
+                source={
+                  showFinalFrame
+                    ? require('../../assets/animations/final_frame.png')
+                    : require('../../assets/animations/founder_animation.gif')
+                }
+                style={styles.animation}
+                resizeMode="contain"
+              />
+            </View>
+
             <Animated.View
               entering={FadeInUp.duration(500).delay(200)}
               style={styles.loginCard}
@@ -147,9 +169,19 @@ const styles = StyleSheet.create({
   },
   centeredContainer: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "center", // 🔥 bring everything to center
     alignItems: "center",
-    padding: spacing.medium,
+    paddingHorizontal: spacing.medium,
+  },
+  animationContainer: {
+    alignItems: "center",
+    marginBottom: 0,
+    backgroundColor: "transparent",
+  },
+  animation: {
+    width: 80,
+    height: 80,
+    backgroundColor: "transparent",
   },
   loginCard: {
     backgroundColor: "rgba(18, 18, 18, 0.95)",
