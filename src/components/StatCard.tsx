@@ -10,9 +10,10 @@ type StatCardProps = {
   percentage?: number;
   icon?: keyof typeof Ionicons.glyphMap;
   delay?: number;
+  onPress?: () => void;
 };
 
-export const StatCard = ({ value, label, percentage, icon = "stats-chart", delay = 0 }: StatCardProps) => {
+export const StatCard = ({ value, label, percentage, icon = "stats-chart", delay = 0, onPress }: StatCardProps) => {
   const slideAnim = useRef(new Animated.Value(20)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -25,7 +26,8 @@ export const StatCard = ({ value, label, percentage, icon = "stats-chart", delay
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <TouchableOpacity activeOpacity={0.8} style={styles.card}>
+      <TouchableOpacity activeOpacity={0.8} style={styles.card} onPress={onPress} disabled={!onPress}>
+
         <View style={styles.topRow}>
           <View style={styles.iconBox}>
             <Ionicons name={icon} size={20} color={colors.primary} />

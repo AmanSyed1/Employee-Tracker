@@ -19,18 +19,22 @@ export const WeeklyAttendance = ({ week, delay = 0 }: WeeklyAttendanceProps) => 
     ]).start();
   }, [delay, fadeAnim, slideAnim]);
 
+  const LEAVE_COLOR = "#9ca3af"; // grey — approved leave (matches attendanceService constant)
+
   const getDayIcon = (color: string) => {
     if (color === colors.status.success) return <Ionicons name="checkmark" size={16} color="white" />;
     if (color === colors.status.error) return <Ionicons name="close" size={16} color="white" />;
     if (color === colors.status.warning) return <Text style={styles.halfText}>1/2</Text>;
+    if (color === LEAVE_COLOR) return <Ionicons name="umbrella-outline" size={13} color="white" />;
     return null;
   };
 
   const getDayColor = (color: string) => {
     if (color === colors.status.success) return colors.status.success;
-    if (color === colors.status.error) return colors.status.error;
+    if (color === colors.status.error)   return colors.status.error;
     if (color === colors.status.warning) return colors.status.warning;
-    return colors.border;
+    if (color === LEAVE_COLOR)           return LEAVE_COLOR; // grey circle for approved leave
+    return colors.border; // future / unknown
   };
 
   return (

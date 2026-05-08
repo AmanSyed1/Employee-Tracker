@@ -7,7 +7,8 @@ export type LeaveRequest = {
   employeeName: string;
   date: string;
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "expired";
+  createdAt?: any;
 };
 
 // Request Sick Leave
@@ -95,4 +96,52 @@ export const loadPendingLeaves = async () => {
 // Admin: Update Leave Status
 export const updateLeaveStatus = async (id: string, status: "approved" | "rejected") => {
   await updateDoc(doc(db, "sick_leaves", id), { status });
+};
+
+// Admin: Get All Leave Requests
+export const loadAllLeaves = async () => {
+  const snap = await getDocs(collection(db, "sick_leaves"));
+  const result: LeaveRequest[] = [];
+
+  snap.docs.forEach((d) => {
+    const data = d.data() as LeaveRequest;
+    result.push({
+      id: d.id,
+      uid: data.uid,
+      employeeName: data.employeeName,
+      date: data.date,
+      reason: data.reason,
+      status: data.status,
+      createdAt: data.createdAt,
+    });
+  });
+
+  return result;
+};
+
+/**
+ * Returns a Set of "YYYY-MM-DD" date strings for which the user has
+ * an APPROVED leave in the given month/year.
+ * Single Firestore scan — no per-day queries.
+ */
+export const getApprovedLeaveDatesForMonth = async (
+  uid: string,
+  year: number,
+  month: number  // 0-indexed (JS Date convention)
+): Promise<Set<string>> => {
+  const snap = await getDocs(collection(db, "sick_leaves"));
+  const result = new Set<string>();
+
+  snap.docs.forEach((d) => {
+    const data = d.data() as LeaveRequest;
+    if (data.uid !== uid) return;
+    if (data.status !== "approved") return;
+
+    const [y, m] = data.date.split("-").map(Number);
+    if (y === year && m - 1 === month) {
+      result.add(data.date); // "YYYY-MM-DD"
+    }
+  });
+
+  return result;
 };

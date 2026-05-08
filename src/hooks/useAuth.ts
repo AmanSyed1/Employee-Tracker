@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../services/firebaseConfig";
 import { getCurrentUserRole, loginUser, logoutUser } from "../services/authService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -27,5 +28,15 @@ export const useAuth = () => {
     return () => unsub();
   }, []);
 
-  return { user, role, loading, login: loginUser, logout: logoutUser };
+  const handleLogout = async () => {
+    console.log("[Auth] Central logout called: Clearing session data");
+    try {
+      await AsyncStorage.multiRemove(["userToken", "userRole"]);
+    } catch (e) {
+      console.error("Failed to clear AsyncStorage", e);
+    }
+    await logoutUser();
+  };
+
+  return { user, role, loading, login: loginUser, logout: handleLogout };
 };

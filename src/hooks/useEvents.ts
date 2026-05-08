@@ -8,6 +8,11 @@ export const useEvents = (uid?: string) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!uid) {
+      setLoading(false);
+      return;
+    }
+
     // Temporary testing phase logic per user request: return ALL events.
     // In the future, we will apply a where clause based on the uid if provided. 
     const q = query(collection(db, "events"), orderBy("createdAt", "desc"));

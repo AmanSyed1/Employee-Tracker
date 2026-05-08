@@ -1,4 +1,5 @@
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator, Pressable } from "react-native";
+import React from "react";
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, StyleProp, TextStyle, ActivityIndicator, Pressable, View } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 import { colors, radius, spacing } from "../theme/colors";
 
@@ -7,13 +8,14 @@ type CustomButtonProps = {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   textStyle?: TextStyle;
+  icon?: React.ReactNode;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export const CustomButton = ({ title, onPress, loading, disabled, style, textStyle }: CustomButtonProps) => {
+export const CustomButton = ({ title, onPress, loading, disabled, style, textStyle, icon }: CustomButtonProps) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -49,7 +51,10 @@ export const CustomButton = ({ title, onPress, loading, disabled, style, textSty
           <Text style={[styles.text, textStyle]}>Signing you in...</Text>
         </View>
       ) : (
-        <Text style={[styles.text, textStyle]}>{title}</Text>
+        <View style={styles.contentContainer}>
+          {icon && <View style={styles.iconContainer}>{icon}</View>}
+          <Text style={[styles.text, textStyle]}>{title}</Text>
+        </View>
       )}
     </AnimatedPressable>
   );
@@ -64,6 +69,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: 52,
   },
+  contentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconContainer: {
+    marginRight: spacing.small,
+  },
   loadingContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -74,4 +86,4 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.5 },
   text: { color: colors.text.primary, fontSize: 16, fontWeight: "bold" }
 });
-import { View } from "react-native";
+

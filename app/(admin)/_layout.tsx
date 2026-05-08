@@ -3,9 +3,10 @@ import { CustomTabBar } from "../../src/components/CustomTabBar";
 import { useAuth } from "../../src/hooks/useAuth";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { colors } from "../../src/theme/colors";
+
 import { Ionicons } from "@expo/vector-icons";
 
-export default function EmployeeLayout() {
+export default function AdminLayout() {
   const { role, loading } = useAuth();
 
   if (loading) {
@@ -16,7 +17,7 @@ export default function EmployeeLayout() {
     );
   }
 
-  if (role !== "employee") {
+  if (role !== "admin") {
     return <Redirect href="/login" />;
   }
 
@@ -32,7 +33,7 @@ export default function EmployeeLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          href: null,
+          href: null, // 🔥 THIS HIDES IT FROM TAB BAR
         }}
       />
       <Tabs.Screen 
@@ -40,6 +41,13 @@ export default function EmployeeLayout() {
         options={{ 
           title: "Home", 
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} style={{ marginBottom: 4 }} /> 
+        }} 
+      />
+      <Tabs.Screen 
+        name="employees" 
+        options={{ 
+          title: "Employees", 
+          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} style={{ marginBottom: 4 }} /> 
         }} 
       />
       <Tabs.Screen 

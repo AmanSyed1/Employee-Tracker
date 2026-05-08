@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator } from "react-native";
+import React, { useState, useMemo, useCallback } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import { colors, spacing, radius, shadows } from "../theme/colors";
 import { Header } from "../components/Header";
 import { LeaveCard } from "../components/LeaveCard";
 import { CustomButton } from "../components/CustomButton";
 import { useLeaves } from "../hooks/useLeaves";
 import { useAuth } from "../hooks/useAuth";
+import { useUser } from "../hooks/useUser";
 import { requestSickLeave } from "../services/leaveService";
 
 type TabType = "Granted" | "Active" | "History";
@@ -15,22 +17,34 @@ type TabType = "Granted" | "Active" | "History";
 export const LeaveScreen = () => {
   const { user } = useAuth();
   const { leaves, loading, error } = useLeaves(user?.uid);
+  const { profile, loadUser } = useUser(user?.uid);
   const [activeTab, setActiveTab] = useState<TabType>("Active");
-  
+
   // Request Form State
   const [leaveDate, setLeaveDate] = useState("");
   const [reason, setReason] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [validationError, setValidationError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  // Reload profile every time this tab gains focus for latest avatar
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.uid) {
+        loadUser();
+      }
+    }, [user?.uid, loadUser])
+  );
 
   const normalizeDate = (date: any) => {
     if (!date) return null;
-    
+
     // Firestore Timestamp
     if (typeof date.toDate === "function") {
       return new Date(date.toDate().setHours(0, 0, 0, 0));
     }
-    
+
     // String or JS Date
     return new Date(new Date(date).setHours(0, 0, 0, 0));
   };
@@ -38,7 +52,7 @@ export const LeaveScreen = () => {
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    return d.getTime(); // Use timestamp for easier comparison
+    return d.getTime();
   }, []);
 
   const currentYear = useMemo(() => new Date().getFullYear(), []);
@@ -72,7 +86,7 @@ export const LeaveScreen = () => {
 
   const filteredLeaves = useMemo(() => {
     if (!leaves) return [];
-    
+
     const categorized = leaves.map(leave => {
       const lDate = normalizeDate(leave.date);
       const lTime = lDate ? lDate.getTime() : 0;
@@ -86,13 +100,12 @@ export const LeaveScreen = () => {
         category = "Active";
       }
 
-      // Debugging Logs
       console.log({
         rawDate: leave.date,
         normalizedDate: lDate,
         today: new Date(today),
         status: leave.status,
-        category
+        category,
       });
 
       return { ...leave, category };
@@ -109,18 +122,23 @@ export const LeaveScreen = () => {
 
   const handleRequestLeave = async () => {
     if (!leaveDate || !reason.trim()) {
-      return Alert.alert("Required", "Please select a date and enter a reason.");
+      setValidationError("Please complete all required leave details.");
+      setTimeout(() => setValidationError(""), 3500);
+      return;
     }
+    setValidationError("");
     if (!user) return;
 
     try {
       setRequesting(true);
       await requestSickLeave(user.uid, leaveDate, reason);
-      Alert.alert("Success", "Request sent to admin");
+      setSuccessMsg("Request sent successfully!");
+      setTimeout(() => setSuccessMsg(""), 3000);
       setLeaveDate("");
       setReason("");
     } catch (error) {
-      Alert.alert("Error", "Failed to submit request");
+      setValidationError("Failed to submit request. Please try again.");
+      setTimeout(() => setValidationError(""), 3500);
     } finally {
       setRequesting(false);
     }
@@ -144,7 +162,7 @@ export const LeaveScreen = () => {
   if (error) {
     return (
       <View style={styles.container}>
-        <Header title="Leave Management" />
+        <Header title="Leave Management" profileImage={profile?.profileImage} />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.status.error} />
           <Text style={styles.errorText}>{error}</Text>
@@ -155,10 +173,10 @@ export const LeaveScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title="Leave Management" />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
+      <Header title="Leave Management" profileImage={profile?.profileImage} />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Remaining Leaves Counter */}
@@ -179,18 +197,18 @@ export const LeaveScreen = () => {
 
           {yearlyLimitReached ? (
             <View style={styles.limitMessageContainer}>
-               <Ionicons name="warning" size={20} color={colors.status.error} />
-               <Text style={styles.limitMessage}>Yearly leave limit reached</Text>
+              <Ionicons name="warning" size={20} color={colors.status.error} />
+              <Text style={styles.limitMessage}>Yearly leave limit reached</Text>
             </View>
           ) : monthlyLimitReached ? (
             <View style={styles.limitMessageContainer}>
-               <Ionicons name="warning" size={20} color={colors.status.warning} />
-               <Text style={styles.limitMessage}>Monthly leave request limit reached (3/month)</Text>
+              <Ionicons name="warning" size={20} color={colors.status.warning} />
+              <Text style={styles.limitMessage}>Monthly leave request limit reached (3/month)</Text>
             </View>
           ) : (
             <>
-              <TouchableOpacity 
-                style={styles.dateSelector} 
+              <TouchableOpacity
+                style={styles.dateSelector}
                 onPress={() => setShowCalendar(true)}
               >
                 <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
@@ -222,8 +240,22 @@ export const LeaveScreen = () => {
                 onChangeText={setReason}
               />
 
-              <CustomButton 
-                title="Submit Request" 
+              {validationError ? (
+                <View style={styles.feedbackError}>
+                  <Ionicons name="alert-circle" size={16} color={colors.status.error} style={{ marginRight: 8 }} />
+                  <Text style={styles.feedbackErrorText}>{validationError}</Text>
+                </View>
+              ) : null}
+
+              {successMsg ? (
+                <View style={styles.feedbackSuccess}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                  <Text style={styles.feedbackSuccessText}>{successMsg}</Text>
+                </View>
+              ) : null}
+
+              <CustomButton
+                title="Submit Request"
                 onPress={handleRequestLeave}
                 loading={requesting}
                 disabled={monthlyLimitReached || yearlyLimitReached}
@@ -242,18 +274,18 @@ export const LeaveScreen = () => {
         {/* Leave List */}
         <View style={styles.listSection}>
           {loading ? (
-             <View style={{ paddingVertical: 40 }}>
-               <ActivityIndicator color={colors.primary} size="large" />
-             </View>
+            <View style={{ paddingVertical: 40 }}>
+              <ActivityIndicator color={colors.primary} size="large" />
+            </View>
           ) : filteredLeaves.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No {activeTab.toLowerCase()} leave requests found.</Text>
             </View>
           ) : (
             filteredLeaves.map((leave, i) => (
-              <LeaveCard 
-                key={leave.id || i} 
-                leave={leave as any} 
+              <LeaveCard
+                key={leave.id || i}
+                leave={leave as any}
                 delay={i * 100}
               />
             ))
@@ -317,18 +349,18 @@ const styles = StyleSheet.create({
   },
   limitMessageContainer: {
     padding: spacing.medium,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
     borderRadius: radius.medium,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: "rgba(239, 68, 68, 0.2)",
   },
   limitMessage: {
     color: colors.text.primary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   selectorContainer: {
@@ -354,4 +386,36 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.text.secondary, fontStyle: "italic", textAlign: "center" },
   errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xlarge },
   errorText: { color: colors.text.secondary, marginTop: spacing.medium, textAlign: "center", fontSize: 16 },
+  feedbackError: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    padding: spacing.medium,
+    borderRadius: radius.medium,
+    marginBottom: spacing.medium,
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.25)",
+  },
+  feedbackErrorText: {
+    color: colors.status.error,
+    fontSize: 13,
+    fontWeight: "500",
+    flex: 1,
+  },
+  feedbackSuccess: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(29, 185, 84, 0.1)",
+    padding: spacing.medium,
+    borderRadius: radius.medium,
+    marginBottom: spacing.medium,
+    borderWidth: 1,
+    borderColor: "rgba(29, 185, 84, 0.2)",
+  },
+  feedbackSuccessText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "500",
+    flex: 1,
+  },
 });

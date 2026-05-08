@@ -1,19 +1,26 @@
-import { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { colors, spacing, radius, shadows } from "../theme/colors";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, usePathname } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useAuth } from "../hooks/useAuth";
+import { NotificationPanel } from "./NotificationPanel";
+import { colors, radius, shadows, spacing } from "../theme/colors";
 
 type HeaderProps = {
   title: string;
   subtitle?: string;
   date?: string;
+  profileImage?: string | null;
   onLogout?: () => void;
 };
 
-export const Header = ({ title, subtitle, date, onLogout }: HeaderProps) => {
+export const Header = ({ title, subtitle, date, profileImage, onLogout }: HeaderProps) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-15)).current;
+  const { role } = useAuth();
+  const pathname = usePathname();
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -34,6 +41,18 @@ export const Header = ({ title, subtitle, date, onLogout }: HeaderProps) => {
   const cleanTitle = title.replace("Welcome, ", "").trim();
   const isEmployeeDashboard = title.includes("Welcome");
 
+  const handleAvatarPress = () => {
+    if (role === "admin") {
+      if (!pathname.includes("/(admin)/profile")) {
+        router.push("/(admin)/profile");
+      }
+    } else {
+      if (!pathname.includes("/(employee)/profile")) {
+        router.push("/(employee)/profile");
+      }
+    }
+  };
+
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
       <LinearGradient
@@ -44,9 +63,17 @@ export const Header = ({ title, subtitle, date, onLogout }: HeaderProps) => {
       >
         <View style={styles.topRow}>
           <View style={styles.profileSection}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={20} color={colors.text.primary} />
-            </View>
+            {/* Clickable avatar → navigates to profile */}
+            <TouchableOpacity style={styles.avatar} onPress={handleAvatarPress} activeOpacity={0.75}>
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={{ width: 44, height: 44, borderRadius: 22 }}
+                />
+              ) : (
+                <Ionicons name="person" size={20} color={colors.text.primary} />
+              )}
+            </TouchableOpacity>
             <View>
               {isEmployeeDashboard ? (
                 <>
@@ -58,19 +85,19 @@ export const Header = ({ title, subtitle, date, onLogout }: HeaderProps) => {
               )}
             </View>
           </View>
-          
+
           <View style={styles.actionSection}>
-            <TouchableOpacity style={styles.iconBtn}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setNotificationsVisible(true)} activeOpacity={0.7}>
               <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
             </TouchableOpacity>
             {onLogout && (
               <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-                 <Ionicons name="log-out-outline" size={20} color={colors.status.error} />
+                <Ionicons name="log-out-outline" size={20} color={colors.status.error} />
               </TouchableOpacity>
             )}
           </View>
         </View>
-        
+
         {(date || subtitle) && (
           <View style={styles.bottomRow}>
             {date && <Text style={styles.date}>{date}</Text>}
@@ -78,6 +105,11 @@ export const Header = ({ title, subtitle, date, onLogout }: HeaderProps) => {
           </View>
         )}
       </LinearGradient>
+      
+      <NotificationPanel 
+        visible={notificationsVisible} 
+        onClose={() => setNotificationsVisible(false)} 
+      />
     </Animated.View>
   );
 };
@@ -85,12 +117,10 @@ export const Header = ({ title, subtitle, date, onLogout }: HeaderProps) => {
 const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: spacing.large,
-    paddingTop: 60, // Top safe area 
+    paddingTop: 60,
     paddingBottom: spacing.large,
     borderBottomLeftRadius: radius.large,
     borderBottomRightRadius: radius.large,
-    marginHorizontal: -spacing.large, // Reaches to the edges of the parent padding
-    marginTop: -spacing.large,        // Optional if we want it pinned to the absolute top
     ...shadows.card,
   },
   topRow: {
@@ -112,16 +142,17 @@ const styles = StyleSheet.create({
     marginRight: spacing.medium,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: "hidden",
   },
-  greeting: { 
-    color: colors.text.secondary, 
+  greeting: {
+    color: colors.text.secondary,
     fontSize: 13,
-    marginBottom: 2 
+    marginBottom: 2,
   },
-  name: { 
-    color: colors.text.primary, 
-    fontSize: 20, 
-    fontWeight: "bold" 
+  name: {
+    color: colors.text.primary,
+    fontSize: 20,
+    fontWeight: "bold",
   },
   actionSection: {
     flexDirection: "row",
@@ -138,15 +169,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  logoutBtn: { 
+  logoutBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)', // subtle red background
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)', // subtle red border
+    borderColor: "rgba(239, 68, 68, 0.3)",
   },
   bottomRow: {
     marginTop: spacing.medium,
@@ -154,12 +185,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  date: { 
-    color: colors.primary, 
+  date: {
+    color: colors.primary,
     fontSize: 14,
     fontWeight: "600",
   },
-  subtitle: { 
+  subtitle: {
     color: colors.text.secondary,
     fontSize: 14,
   },
